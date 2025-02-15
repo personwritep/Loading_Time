@@ -1,0 +1,122 @@
+// ==UserScript==
+// @name        Loading Time
+// @namespace        http://tampermonkey.net/
+// @version        0.3
+// @description        「HOME」の要素のローディング時間を調査する
+// @author        Ameba blog User
+// @match        https://ameblo.jp/*
+// @match        https://www.ameba.jp/*
+// @match        https://blog.ameba.jp/*
+// @match        https://msg.ameba.jp/*
+// @icon        https://www.google.com/s2/favicons?sz=64&domain=ameblo.jp
+// @noframes
+// @grant        none
+// ==/UserScript==
+
+
+// お知らせ項目
+let E0='.HomeRedNotification_Item_Button';
+
+// コメントした記事
+let E1='.HomeBlogComment_Collection a';
+// コメントした記事 もっと見る
+let E2='.HomeBlogComment .Collection_ReadMore_Button';
+
+// スタッフブログ 告知項目
+let E3='.PcModuleNotification_Link';
+
+//フォローフィード 新着記事
+let E4='.HomeChecklist_Collection_Item';
+//フォローフィード もっと見る
+let E5='.HomeChecklist .Collection_ReadMore_Button';
+
+// 最近見たブログ
+let E6='.HomeBlogHistory_Article';
+
+// Amebaトピックス 記事
+let E7='.HomeMainTopics_Topic';
+
+// 新着トピックス
+let E8='.HomeBlogFeed_Article_Card';
+// 新着トピックス もっと見る
+let E9='.HomeBlogFeed .Collection_ReadMore_Button';
+
+let EE='.HomeBlogModule_Banner';
+
+
+
+
+let interval_time=40; // 計測間隔 msec  🟦
+let max_retry=8; // 計測の上限 sec  🟦
+
+
+let retry=0;
+let interval=setInterval(wait_target, interval_time);
+function wait_target(){
+    retry++;
+    if(retry*interval_time>max_retry*1000){ // 待機上限
+        clearInterval(interval);
+        result_disp(retry*interval_time, 1); }
+
+    let target=document.querySelector(E1); // 調査対象のセレクタを指定 🟥
+    if(target){
+        clearInterval(interval);
+        result_disp(retry*interval_time, 0)
+        console.log(retry*interval_time + 'msec');
+    }}
+
+
+function result_disp(n, limit){
+    let dis;
+    if(limit==0){
+        dis='<div id="lt_disp">'+ n +'msec　平均' + av(n); }
+    else{
+        dis='<div id="lt_disp">'+ max_retry +'sec を超えたので計測を中止しました'; }
+
+    dis+=
+        '<style>'+
+        '#lt_disp { position: fixed; top: 62px; left: 6px; z-index: 10000; '+
+        'font: normal 16px Meiryo; padding: 4px 8px 2px; '+
+        'color: #000; background: #fff; border: 1px solid #aaa; }'+
+        '</style></div>';
+
+    document.body.insertAdjacentHTML('beforeend', dis); }
+
+
+
+let DB=[]; // 計測値の配列
+
+function av(n){
+    let av=0;
+    let total=0;
+
+    let read_json=sessionStorage.getItem('DB_back'); // ストレージ 保存名
+    DB=JSON.parse(read_json);
+    if(DB==null){
+        DB=[n];
+        write_DB();
+        return n+' / 1'; }
+    else{
+        DB.push(n);
+        write_DB();
+        for(let k=0; k<DB.length; k++){
+            total+=DB[k]; }
+        av=Math.round(total/DB.length);
+        return av+' / '+ DB.length; }}
+
+
+function write_DB(){ // セッションストレージ DB 保存
+    let write_json=JSON.stringify(DB);
+    sessionStorage.setItem('DB_back', write_json); }
+
+
+
+document.addEventListener("keydown", (event)=>{
+    if(event.keyCode==27){ // ESCキーで直前の計測結果を除外
+        let read_json=sessionStorage.getItem('DB_back'); // ストレージ 保存名
+        DB=JSON.parse(read_json);
+        if(DB!=null){
+            DB.pop();
+            write_DB(); }}});
+
+
